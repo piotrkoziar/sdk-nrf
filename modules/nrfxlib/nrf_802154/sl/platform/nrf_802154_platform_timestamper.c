@@ -10,6 +10,7 @@
 #include <haly/nrfy_grtc.h>
 #include <hal/nrf_dppi.h>
 #include <hal/nrf_ppib.h>
+#include <hal/nrf_ipct.h>
 
 #include <assert.h>
 #include <zephyr/drivers/timer/nrf_grtc_timer.h>
