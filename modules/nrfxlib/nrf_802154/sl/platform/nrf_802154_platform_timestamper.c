@@ -8,6 +8,7 @@
 
 #include <haly/nrfy_dppi.h>
 #include <haly/nrfy_grtc.h>
+#include <hal/nrf_grtc.h>
 #include <hal/nrf_dppi.h>
 #include <hal/nrf_ppib.h>
 #if defined(NRF54H_SERIES)
@@ -205,6 +206,11 @@ void nrf_802154_platform_timestamper_local_domain_connections_setup(uint32_t dpp
 	nrf_ipct_subscribe_set(NRF_IPCT, IPCT_L_TASK_SEND, dppi_ch);
 }
 
+void nrf_802154_platform_timestamper_capture_prepare(void)
+{
+	z_nrf_grtc_timer_capture_prepare(m_timestamp_cc_channel);
+}
+
 #elif defined(NRF54L_SERIES)
 
 /* To trigger GRTC.TASKS_CAPTURE[#cc] with RADIO.EVENT_{?}, the following connection chain must be
@@ -268,6 +274,7 @@ void nrf_802154_platform_timestamper_local_domain_connections_setup(uint32_t dpp
 
 void nrf_802154_platform_timestamper_init(void)
 {
+	nrfy_grtc_sys_counter_active_set(NRF_GRTC, true);
 	m_timestamp_cc_channel = z_nrf_grtc_timer_chan_alloc();
 	assert(m_timestamp_cc_channel >= 0);
 }
@@ -285,6 +292,9 @@ void nrf_802154_platform_timestamper_local_domain_connections_clear(uint32_t dpp
 	/* Intentionally empty. */
 }
 
+extern volatile uint8_t cc_n;
+extern volatile bool piko_pass;
+
 bool nrf_802154_platform_timestamper_captured_timestamp_read(uint64_t *p_captured)
 {
 	/* @todo: check if this can be replaced with:
@@ -297,4 +307,10 @@ bool nrf_802154_platform_timestamper_captured_timestamp_read(uint64_t *p_capture
 
 	*p_captured = nrfy_grtc_sys_counter_cc_get(NRF_GRTC, m_timestamp_cc_channel);
 	return true;
+}
+
+void nrf_802154_platform_timestamper_grtc_trigger(void)
+{
+	nrf_grtc_task_t capture7 = NRF_GRTC_TASK_CAPTURE_7;
+	nrfy_grtc_task_trigger(NRF_GRTC, capture7);
 }
