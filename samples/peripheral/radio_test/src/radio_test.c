@@ -684,6 +684,19 @@ static void generate_modulated_rf_packet(uint8_t mode,
 	nrf_radio_packetptr_set(NRF_RADIO, tx_packet);
 }
 
+#if CONFIG_FEM
+static void fem_disable(void)
+{
+	fem_txrx_configuration_clear();
+	fem_txrx_stop();
+
+	/* Do not power-down front-end module (FEM) during sweeping. */
+	if (!sweep_processing) {
+		(void)fem_power_down();
+	}
+}
+#endif /* CONFIG_FEM */
+
 static void radio_disable(void)
 {
 	nrf_radio_shorts_set(NRF_RADIO, 0);
@@ -695,16 +708,6 @@ static void radio_disable(void)
 		/* Do nothing */
 	}
 	nrf_radio_event_clear(NRF_RADIO, NRF_RADIO_EVENT_DISABLED);
-
-#if CONFIG_FEM
-	fem_txrx_configuration_clear();
-	fem_txrx_stop();
-
-	/* Do not power-down front-end module (FEM) during sweeping. */
-	if (!sweep_processing) {
-		(void)fem_power_down();
-	}
-#endif /* CONFIG_FEM */
 }
 
 static void mltpan_6(nrf_radio_mode_t mode)
@@ -749,6 +752,10 @@ static void radio_mode_set(NRF_RADIO_Type *reg, nrf_radio_mode_t mode)
 
 static void radio_unmodulated_tx_carrier(uint8_t mode, int8_t txpower, uint8_t channel)
 {
+#if CONFIG_FEM
+	fem_disable();
+	fem_enable();
+#endif
 	radio_disable();
 
 	radio_mode_set(NRF_RADIO, mode);
@@ -771,6 +778,10 @@ static void radio_unmodulated_tx_carrier(uint8_t mode, int8_t txpower, uint8_t c
 static void radio_modulated_tx_carrier(uint8_t mode, int8_t txpower, uint8_t channel,
 				       enum transmit_pattern pattern, uint32_t packets_num)
 {
+#if CONFIG_FEM
+	fem_disable();
+	fem_enable();
+#endif
 	radio_disable();
 	generate_modulated_rf_packet(mode, pattern);
 
@@ -834,6 +845,10 @@ static void radio_modulated_tx_carrier(uint8_t mode, int8_t txpower, uint8_t cha
 static void radio_rx(uint8_t mode, uint8_t channel, enum transmit_pattern pattern,
 		     uint32_t rx_packet_num)
 {
+#if CONFIG_FEM
+	fem_disable();
+	fem_enable();
+#endif
 	radio_disable();
 
 	radio_mode_set(NRF_RADIO, mode);
@@ -904,6 +919,10 @@ static void radio_modulated_tx_carrier_duty_cycle(uint8_t mode, int8_t txpower,
 		8, 4, 32, 8, 4, 64, 16, 0, 0, 2, 2, 0, 0, 0, 0, 32
 	};
 
+#if CONFIG_FEM
+	fem_disable();
+	fem_enable();
+#endif
 	radio_disable();
 	generate_modulated_rf_packet(mode, pattern);
 
@@ -1007,6 +1026,9 @@ void radio_test_cancel(void)
 
 	endpoints_clear();
 	radio_disable();
+#if CONFIG_FEM
+	fem_disable();
+#endif
 }
 
 void radio_rx_stats_get(struct radio_rx_stats *rx_stats)
@@ -1057,6 +1079,9 @@ void toggle_dcdc_state(uint8_t dcdc_state)
 static void rx_timeout_work_handler(struct k_work *work)
 {
 	radio_disable();
+#if CONFIG_FEM
+	fem_disable();
+#endif
 	if (rx_timeout_cb != NULL && *rx_timeout_cb != NULL) {
 		(*rx_timeout_cb)();
 	}
@@ -1143,6 +1168,9 @@ void radio_handler(const void *context)
 		tx_packet_cnt++;
 		if (tx_packet_cnt == config->params.modulated_tx.packets_num) {
 			radio_disable();
+#if CONFIG_FEM
+			fem_disable();
+#endif
 			config->params.modulated_tx.cb();
 		}
 	}

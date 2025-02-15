@@ -225,6 +225,13 @@ int8_t fem_default_tx_output_power_get(void);
  */
 void fem_errata_25X(nrf_radio_mode_t mode);
 
+/**@brief Explicitly enable the front-end module.
+ *
+ * Must be called before any front-end configuration for radio operation.
+ * Is intended to be used shortly before the radio operations start.
+ */
+void fem_enable(void);
+
 #ifdef __cplusplus
 }
 #endif

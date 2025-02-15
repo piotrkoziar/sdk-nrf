@@ -400,3 +400,8 @@ void fem_errata_25X(nrf_radio_mode_t mode)
 		apply_fem_errata_25X(mode);
 	}
 }
+
+void fem_enable(void)
+{
+	mpsl_fem_enable();
+}
