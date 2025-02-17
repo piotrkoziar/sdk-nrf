@@ -1081,6 +1081,15 @@ static void radio_reset(void)
 	dtm_inst.rx_pkt_count = 0;
 }
 
+#if CONFIG_FEM
+static void fem_disable(void)
+{
+	fem_txrx_configuration_clear();
+	fem_txrx_stop();
+	(void)fem_power_down();
+}
+#endif /* CONFIG_FEM */
+
 static int radio_init(void)
 {
 	nrf_radio_packet_conf_t packet_conf;
@@ -1091,6 +1100,10 @@ static int radio_init(void)
 		return -EINVAL;
 	}
 
+#if CONFIG_FEM
+	fem_disable();
+	fem_enable();
+#endif
 	/* Turn off radio before configuring it */
 	radio_reset();
 
@@ -1672,11 +1685,8 @@ static void dtm_test_done(void)
 	radio_reset();
 
 #if CONFIG_FEM
-	fem_txrx_configuration_clear();
-	fem_txrx_stop();
-	(void)fem_power_down();
-#endif /* CONFIG_FEM */
-
+	fem_disable();
+#endif
 	dtm_inst.state = STATE_IDLE;
 }
 
