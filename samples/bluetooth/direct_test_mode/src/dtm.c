@@ -1139,6 +1139,33 @@ static int radio_init(void)
 	return 0;
 }
 
+#include <debug/ppi_trace.h>
+#include "hal/nrf_radio.h"
+
+/* Definitions borrowed from ppi_trace.c */
+#define HANDLE_FLAG BIT(31)
+#define HANDLE_ENCODE(value) (void *)((uint32_t)value | HANDLE_FLAG)
+
+#if !defined(NRF54L_SERIES) 
+#error Unsupported SoC type.
+#endif
+
+#ifdef DPPI_PRESENT
+#include <hal/nrf_dppi.h>
+#define RADIO_DOMAIN_NRFX_DPPI_INSTANCE NRFX_DPPI_INSTANCE(10)
+#endif
+
+static void *set_debug_gpio(uint32_t pin, uint32_t evt)
+{
+	nrfx_dppi_t radio_domain_nrfx_dppi = RADIO_DOMAIN_NRFX_DPPI_INSTANCE;
+	if (ppi_trace_dppi_ch_trace(pin, evt, &radio_domain_nrfx_dppi) != 0) {
+		return NULL;
+	}
+	return HANDLE_ENCODE(evt);
+}
+
+#define NRF_802154_DPPIC_INSTANCE    NRFX_CONCAT_2(NRF_DPPIC, 10)
+
 int dtm_init(dtm_iq_report_callback_t callback)
 {
 	int err;
@@ -1246,6 +1273,27 @@ int dtm_init(dtm_iq_report_callback_t callback)
 		    NULL, 0);
 	irq_enable(RADIO_IRQn);
 
+	nrf_radio_publish_set(NRF_RADIO, NRF_RADIO_EVENT_DISABLED, 0x7);
+	nrf_radio_publish_set(NRF_RADIO, NRF_RADIO_EVENT_READY, 0x4);
+	nrf_dppi_channels_enable(NRF_802154_DPPIC_INSTANCE,
+		(1UL << 0x7) |
+		(1UL << 0x4));
+
+	/** As with the drv154_cli commands:
+	 * set_debug_gpio 45 0x7
+	 * set_debug_gpio 41 0x4
+	 *
+	 * 45 corresponds to P1.13 (BUTTON1, 32 + 13)
+	 * 41 corresponds to P1.09 (BUTTON2, 32 + 9)
+	*/
+	if (!set_debug_gpio(45, 0x7))
+	{
+		printk("Debug GPIO: setting debug gpio failed. \n");
+	}
+	if (!set_debug_gpio(41, 0x4))
+	{
+		printk("Debug GPIO: setting debug gpio failed. \n");
+	}
 
 	err = radio_init();
 	if (err) {
